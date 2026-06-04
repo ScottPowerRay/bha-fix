@@ -1,5 +1,5 @@
 /* BHA Fix Tracker — service worker: app shell cache for full offline use */
-const CACHE = 'bha-v1.4.0';
+const CACHE = 'bha-v1.5.0';
 const SHELL = ['./', 'index.html', 'data.js', 'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

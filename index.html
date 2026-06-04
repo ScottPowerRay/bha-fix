@@ -119,7 +119,7 @@ table.tb td{padding:8px 6px;border-bottom:1px solid #f1f5f9;font-weight:600}
 <script src="data.js"></script>
 <script>
 'use strict';
-/* ================= BHA Fix Tracker v1.4 ================= */
+/* ================= BHA Fix Tracker v1.5 ================= */
 const SEED = window.BHA_SEED;
 const LETTERS = 'ABCDEFGHIJK'.split('');
 const ROWS = 25;
@@ -213,8 +213,8 @@ function setStatus(b,s,l,r,code){
 }
 
 /* ---------- sync ---------- */
-let syncing = false, syncTimer = null, lastErr = null;
-function scheduleSync(){ clearTimeout(syncTimer); syncTimer = setTimeout(sync, 2500); }
+let syncing = false, syncTimer = null, lastErr = null, failN = 0;
+function scheduleSync(){ clearTimeout(syncTimer); syncTimer = setTimeout(sync, 800); }
 async function sync(manual){
   if(!cfg.url){ if(manual) toast('No server connected yet — set it in Menu'); updateChip(); return; }
   if(syncing || !navigator.onLine){ updateChip(); return; }
@@ -232,21 +232,28 @@ async function sync(manual){
       if(pendKeys.has(k)) continue;
       over[k] = j.changed[k];
     }
-    if(j.log) srvLog = j.log;
+    if(j.log && j.log.length) srvLog = j.log;
     if(j.time) cfg.lastSync = j.time;
+    failN = 0;
     persist(); render();
-  }catch(e){ lastErr = e.message || 'sync failed'; }
+  }catch(e){
+    lastErr = e.message || 'sync failed';
+    failN++;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(sync, Math.min(20000, 4000 * failN)); // auto-retry: 4s, 8s, 12s... max 20s
+  }
   syncing = false; updateChip();
 }
 window.addEventListener('online', ()=>sync());
-setInterval(()=>{ if(queue.length || cfg.url) sync(); }, 60000);
+setInterval(()=>{ if(!document.hidden) sync(); }, 20000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) sync(); });
 
 function chipState(){
   if(!cfg.url) return ['off','Not connected'];
   if(syncing) return ['sync','Syncing…'];
   if(!navigator.onLine) return ['off', queue.length? '📡 Offline · '+queue.length+' saved' : '📡 Offline'];
-  if(lastErr) return ['err', queue.length+' pending · retry'];
-  if(queue.length) return ['pend', queue.length+' pending'];
+  if(lastErr) return ['err', '⏳ '+(queue.length||'all')+' saved · auto-retrying'];
+  if(queue.length) return ['pend', '⏳ '+queue.length+' syncing…'];
   return ['ok','✓ Synced'];
 }
 function updateChip(){
@@ -427,7 +434,7 @@ function vMenu(){
     <div class="card"><b>Signed in as</b>
       <div style="font-size:20px;font-weight:800;margin:4px 0 10px">${esc(editor||'—')}</div>
       <button class="btn gray" onclick="editor=null;LS.set('bha_editor',null);render()">Switch person</button></div>
-    <div class="card note">BHA Fix Tracker v1.4 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
+    <div class="card note">BHA Fix Tracker v1.5 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
   </div>`;
 }
 
