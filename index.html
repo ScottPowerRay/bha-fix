@@ -59,7 +59,8 @@ h2.sec{font-size:13px;font-weight:800;color:var(--mut);text-transform:uppercase;
 .map{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 6px 10px}
 .mapgrid{display:grid;grid-template-columns:20px repeat(11,minmax(0,1fr));gap:2px;width:100%}
 .rl{font-size:10px;font-weight:800;color:var(--mut);display:flex;align-items:center;justify-content:center}
-.cl{font-size:11.5px;font-weight:800;color:var(--mut);display:flex;align-items:center;justify-content:center;padding:2px 0}
+.cl{font-size:12px;font-weight:800;color:var(--mut);display:flex;align-items:center;justify-content:center;padding:4px 0}
+.mapgrid > .cl, .mapgrid > .corner{position:sticky;top:54px;z-index:5;background:var(--card);box-shadow:0 2px 0 var(--line)}
 .cell{aspect-ratio:1/.95;min-height:24px;width:100%;border-radius:5px;border:none;font-family:inherit;position:relative;padding:0}
 .cell.Y{background:var(--y)} .cell.O{background:var(--o)} .cell.R{background:var(--r)} .cell.T{background:var(--t)} .cell._{background:var(--empty)}
 .cell.pend:after{content:"";position:absolute;inset:2px;border:2px dashed rgba(255,255,255,.9);border-radius:4px}
@@ -119,7 +120,7 @@ table.tb td{padding:8px 6px;border-bottom:1px solid #f1f5f9;font-weight:600}
 <script src="data.js"></script>
 <script>
 'use strict';
-/* ================= BHA Fix Tracker v1.6 ================= */
+/* ================= BHA Fix Tracker v1.7 ================= */
 const SEED = window.BHA_SEED;
 const LETTERS = 'ABCDEFGHIJK'.split('');
 const ROWS = 25;
@@ -354,7 +355,7 @@ function vBlock(b){
 }
 function vSection(b,s){
   $('nav').style.display = 'flex';
-  let cellsAll = `<div></div>${LETTERS.map(l=>`<div class="cl">${l}</div>`).join('')}`;
+  let cellsAll = `<div class="corner"></div>${LETTERS.map(l=>`<div class="cl">${l}</div>`).join('')}`;
   for(let r=ROWS; r>=1; r--){
     cellsAll += `<div class="rl">${r}</div>`;
     for(const l of LETTERS){
@@ -440,7 +441,7 @@ function vMenu(){
     <div class="card"><b>Signed in as</b>
       <div style="font-size:20px;font-weight:800;margin:4px 0 10px">${esc(editor||'—')}</div>
       <button class="btn gray" onclick="editor=null;LS.set('bha_editor',null);render()">Switch person</button></div>
-    <div class="card note">BHA Fix Tracker v1.6 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
+    <div class="card note">BHA Fix Tracker v1.7 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
   </div>`;
 }
 
