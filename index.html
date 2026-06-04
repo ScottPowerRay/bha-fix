@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>BHA Fix Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<style>
+:root{
+  --y:#16a34a; --o:#f59e0b; --r:#dc2626; --t:#9333ea; --empty:#e5e7eb;
+  --ink:#111827; --mut:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --card:#ffffff;
+  --blue:#2563eb; --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);overscroll-behavior-y:none}
+#app{padding-bottom:calc(64px + var(--safe-b))}
+.hdr{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:10px 12px;display:flex;align-items:center;gap:10px;min-height:54px}
+.hdr h1{font-size:18px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back{border:none;background:#f1f5f9;border-radius:10px;font-size:16px;font-weight:700;padding:9px 13px;color:var(--ink)}
+.chip{font-size:11.5px;font-weight:700;border-radius:99px;padding:5px 10px;white-space:nowrap}
+.chip.ok{background:#dcfce7;color:#166534}
+.chip.pend{background:#fef3c7;color:#92400e}
+.chip.off{background:#f1f5f9;color:#475569}
+.chip.err{background:#fee2e2;color:#991b1b}
+.chip.sync{background:#dbeafe;color:#1e40af}
+.wrap{padding:12px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.grid-blocks{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
+.blk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:left;font-family:inherit}
+.blk b{font-size:15px;display:block;margin-bottom:5px}
+.blk .mini{font-size:10.5px;display:flex;gap:6px;margin-bottom:6px;font-weight:700;flex-wrap:wrap}
+.dotR{color:var(--r)} .dotO{color:#b45309} .dotT{color:var(--t)} .dotG{color:#166534}
+.bar{height:6px;border-radius:4px;background:#f1f5f9;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--y)}
+.done{border-color:#bbf7d0;background:#f0fdf4}
+.secrow{display:grid;grid-template-columns:1fr 1fr 16px 1fr 1fr;gap:6px;align-items:stretch}
+.seccard{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 8px;text-align:left;font-family:inherit;min-height:104px}
+.seccard b{font-size:14.5px}
+.roadv{display:flex;align-items:center;justify-content:center;overflow:hidden}
+.roadv span{writing-mode:vertical-rl;font-size:8.5px;font-weight:800;letter-spacing:1.5px;color:var(--mut);white-space:nowrap;border-left:2px dashed #cbd5e1;padding-left:4px}
+.road{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:11px;font-weight:800;letter-spacing:1px;margin:4px 0}
+.road:before,.road:after{content:"";flex:1;border-top:2px dashed #cbd5e1}
+.stat3{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.seccard .stat3{gap:4px}
+.seccard .pill{font-size:10.5px;padding:3px 6px}
+.pill{font-size:12px;font-weight:700;border-radius:8px;padding:4px 8px}
+.pill.Y{background:#dcfce7;color:#166534}.pill.O{background:#fef3c7;color:#92400e}.pill.R{background:#fee2e2;color:#991b1b}.pill.T{background:#f3e8ff;color:#6b21a8}
+.burn{margin-top:10px}
+.burn .lbl{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px}
+.burn .lbl span:last-child{color:var(--mut)}
+h2.sec{font-size:13px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:14px 2px 8px}
+.map{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 8px 12px;overflow-x:auto}
+.maprow{display:grid;grid-template-columns:30px repeat(11,1fr);gap:3px;margin-bottom:3px;min-width:320px}
+.rl{font-size:10.5px;font-weight:800;color:var(--mut);display:flex;align-items:center;justify-content:center}
+.cl{font-size:11px;font-weight:800;color:var(--mut);text-align:center;padding:3px 0}
+.cell{aspect-ratio:1/.92;min-height:26px;border-radius:6px;border:none;font-family:inherit;position:relative}
+.cell.Y{background:var(--y)} .cell.O{background:var(--o)} .cell.R{background:var(--r)} .cell.T{background:var(--t)} .cell._{background:var(--empty)}
+.cell.pend:after{content:"";position:absolute;inset:2px;border:2px dashed rgba(255,255,255,.9);border-radius:4px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;padding:10px 2px;font-size:12px;font-weight:600;color:var(--mut)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:4px}
+.sheetbg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(18px + var(--safe-b));z-index:41;transform:translateY(105%);transition:transform .18s ease-out;max-width:760px;margin:0 auto}
+.sheet.open{transform:none}
+.sheetbg.open{display:block}
+.sheet h3{font-size:18px;font-weight:800;margin-bottom:2px}
+.sheet .sub{color:var(--mut);font-size:12.5px;margin-bottom:14px}
+.stbtn{display:flex;align-items:center;gap:12px;width:100%;border:2px solid var(--line);background:var(--card);border-radius:13px;padding:13px 14px;font-size:16px;font-weight:700;margin-bottom:9px;font-family:inherit;color:var(--ink)}
+.stbtn .sw{width:22px;height:22px;border-radius:7px;flex:none}
+.stbtn.cur{border-color:var(--blue);background:#eff6ff}
+.stbtn.cur:after{content:"✓ current";margin-left:auto;font-size:11px;color:var(--blue);font-weight:800}
+.cancel{width:100%;border:none;background:#f1f5f9;border-radius:13px;padding:13px;font-size:15px;font-weight:700;font-family:inherit;color:var(--mut)}
+.toast{position:fixed;bottom:calc(76px + var(--safe-b));left:50%;transform:translateX(-50%);background:#111827;color:#fff;border-radius:12px;padding:11px 16px;font-size:13.5px;font-weight:600;z-index:60;display:flex;gap:14px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:92vw}
+.toast button{background:none;border:none;color:#60a5fa;font-weight:800;font-size:13.5px;font-family:inherit}
+.nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;z-index:30;padding-bottom:var(--safe-b)}
+.nav button{flex:1;border:none;background:none;padding:9px 0 7px;font-size:10.5px;font-weight:700;color:var(--mut);font-family:inherit}
+.nav button.on{color:var(--blue)}
+.nav .ico{font-size:21px;display:block;margin-bottom:1px}
+.bigpct{font-size:34px;font-weight:800;line-height:1}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px}
+.kpi .t{font-size:11.5px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi .s{font-size:12px;color:var(--mut);font-weight:600;margin-top:4px}
+table.tb{width:100%;border-collapse:collapse;font-size:13px}
+table.tb th{font-size:10.5px;text-transform:uppercase;color:var(--mut);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);letter-spacing:.4px}
+table.tb td{padding:8px 6px;border-bottom:1px solid #f1f5f9;font-weight:600}
+.r0{color:#9ca3af;font-weight:500}
+.namebtn{display:block;width:100%;border:1px solid var(--line);background:var(--card);border-radius:13px;padding:15px;font-size:17px;font-weight:700;margin-bottom:9px;font-family:inherit;color:var(--ink);text-align:left}
+.field{width:100%;border:1px solid var(--line);border-radius:11px;padding:12px;font-size:14px;font-family:inherit;margin-top:6px}
+.btn{border:none;background:var(--blue);color:#fff;border-radius:11px;padding:12px 16px;font-size:14px;font-weight:700;font-family:inherit}
+.btn.gray{background:#f1f5f9;color:var(--ink)}
+.log{font-size:12.5px}
+.log .row{padding:8px 0;border-bottom:1px solid #f1f5f9}
+.log .who{font-weight:800}
+.log .meta{color:var(--mut);font-size:11px;margin-top:1px}
+.regbadge{background:#fee2e2;color:#991b1b;font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:6px}
+.pendbadge{background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:6px}
+.note{font-size:12.5px;color:var(--mut);line-height:1.5}
+.tglrow{display:flex;gap:6px;margin:0 2px 8px}
+.tgl{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 13px;font-size:12px;font-weight:700;font-family:inherit;color:var(--mut)}
+.tgl.on{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="sheetbg" id="sheetbg"></div>
+<div class="sheet" id="sheet"></div>
+<nav class="nav" id="nav" style="display:none">
+  <button id="nav-blocks"><span class="ico">🗺️</span>Blocks</button>
+  <button id="nav-dash"><span class="ico">📊</span>Dashboard</button>
+  <button id="nav-menu"><span class="ico">☰</span>Menu</button>
+</nav>
+<script src="data.js"></script>
+<script>
+'use strict';
+/* ================= BHA Fix Tracker v1.3 ================= */
+const SEED = window.BHA_SEED;
+const LETTERS = 'ABCDEFGHIJK'.split('');
+const ROWS = 25;
+const ST = {
+  Y:{label:'Good — BHA centered', short:'Good', color:'var(--y)'},
+  O:{label:'Off center', short:'Off ctr', color:'var(--o)'},
+  R:{label:'Rail contact', short:'Rail', color:'var(--r)'},
+  T:{label:'Twisted pile', short:'Twisted', color:'var(--t)'}
+};
+const STATUS_TEXT = {Y:'Yes', O:'Off center', R:'Rail contact', T:'Twisted pile'};
+const ROSTER = ['Scott Ray','Kaiden Ray','Andrew Jonas','Abner Chavez','Arben Chavez','David Vertiz','Gloria Lira','Joanna G.','Natalia Franco','Jaron Ray'];
+
+/* ---------- storage ---------- */
+const LS = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ console.warn('LS full',e);} }
+};
+let over   = LS.get('bha_over', {});
+let queue  = LS.get('bha_q', []);
+let logArr = LS.get('bha_log', []);
+let srvLog = LS.get('bha_srvlog', []);
+let editor = LS.get('bha_editor', null);
+let cfg    = LS.get('bha_cfg', {url:'', lastSync: SEED.t});
+let device = LS.get('bha_device', null);
+if(!device){ device = 'dev-' + Math.random().toString(36).slice(2,10); LS.set('bha_device', device); }
+const persist = () => { LS.set('bha_over',over); LS.set('bha_q',queue); LS.set('bha_log',logArr.slice(0,250)); LS.set('bha_srvlog',srvLog.slice(0,150)); LS.set('bha_cfg',cfg); };
+
+/* ---------- data access ---------- */
+const key = (b,s,l,r) => b+'|'+s+'|'+l+'|'+r;
+function getS(b,s,l,r){
+  const o = over[key(b,s,l,r)];
+  if(o) return o.s;
+  return SEED.piles[b][s][l][r-1];
+}
+function getMeta(b,s,l,r){ return over[key(b,s,l,r)] || null; }
+function blockStats(b){
+  const c = {Y:0,O:0,R:0,T:0,'.':0};
+  for(let s=1;s<=4;s++){ for(const l of LETTERS){ const str = SEED.piles[b][s][l];
+    for(let r=1;r<=ROWS;r++){ const o = over[key(b,s,l,r)]; c[o?o.s:str[r-1]]++; } } }
+  return c;
+}
+function secStats(b,s){
+  const c = {Y:0,O:0,R:0,T:0,'.':0};
+  for(const l of LETTERS){ const str = SEED.piles[b][String(s)][l];
+    for(let r=1;r<=ROWS;r++){ const o = over[key(b,s,l,r)]; c[o?o.s:str[r-1]]++; } }
+  return c;
+}
+function siteStats(){
+  const c = {Y:0,O:0,R:0,T:0,'.':0};
+  for(const b of SEED.blocks){ const bc = blockStats(b); for(const k in c) c[k]+=bc[k]; }
+  return c;
+}
+const railBase  = b => SEED.railBase[b]||0;
+const twistBase = b => Math.max(SEED.twistBase[b]||0, 0);
+const pct = (fixed,base) => base<=0 ? 100 : Math.max(0,Math.min(100,Math.round(fixed/base*100)));
+const offPct = c => { const n = c.Y+c.O+c.R+c.T; return n? Math.round(c.O/n*1000)/10 : 0; };
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmtT = iso => { const d = new Date(iso); return d.toLocaleDateString([], {month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); };
+function toast(msg, undoFn){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t = document.createElement('div'); t.className = 'toast';
+  t.innerHTML = '<span>'+esc(msg)+'</span>' + (undoFn?'<button>UNDO</button>':'');
+  if(undoFn) t.querySelector('button').onclick = () => { undoFn(); t.remove(); };
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 5000);
+}
+
+/* ---------- edits ---------- */
+function setStatus(b,s,l,r,code){
+  const prev = getS(b,s,l,r);
+  if(prev === code) return;
+  const k = key(b,s,l,r), ts = new Date().toISOString();
+  over[k] = {s:code, e:editor, t:ts};
+  queue.push({id:Math.random().toString(36).slice(2), k, s:code, prev, ts, ed:editor});
+  const reg = prev==='Y' && code!=='Y';
+  logArr.unshift({k, prev, s:code, ed:editor, ts, reg});
+  persist(); render(); updateChip();
+  toast(`${b} · S${s} · ${l}${r} → ${ST[code].short}`, () => {
+    const ts2 = new Date().toISOString();
+    over[k] = {s:prev, e:editor, t:ts2};
+    queue.push({id:Math.random().toString(36).slice(2), k, s:prev, prev:code, ts:ts2, ed:editor});
+    logArr.unshift({k, prev:code, s:prev, ed:editor, ts:ts2, reg:false, undo:true});
+    persist(); render(); updateChip(); scheduleSync();
+  });
+  scheduleSync();
+}
+
+/* ---------- sync ---------- */
+let syncing = false, syncTimer = null, lastErr = null;
+function scheduleSync(){ clearTimeout(syncTimer); syncTimer = setTimeout(sync, 2500); }
+async function sync(manual){
+  if(!cfg.url){ if(manual) toast('No server connected yet — set it in Menu'); updateChip(); return; }
+  if(syncing || !navigator.onLine){ updateChip(); return; }
+  syncing = true; lastErr = null; updateChip();
+  try{
+    const body = JSON.stringify({device, editor, since: cfg.lastSync, edits: queue});
+    const res = await fetch(cfg.url, {method:'POST', body, headers:{'Content-Type':'text/plain;charset=utf-8'}, redirect:'follow'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const j = await res.json();
+    if(j.error) throw new Error(j.error);
+    const applied = new Set(j.applied||[]);
+    queue = queue.filter(q => !applied.has(q.id));
+    const pendKeys = new Set(queue.map(q=>q.k));
+    for(const k in (j.changed||{})){
+      if(pendKeys.has(k)) continue;
+      over[k] = j.changed[k];
+    }
+    if(j.log) srvLog = j.log;
+    if(j.time) cfg.lastSync = j.time;
+    persist(); render();
+  }catch(e){ lastErr = e.message || 'sync failed'; }
+  syncing = false; updateChip();
+}
+window.addEventListener('online', ()=>sync());
+setInterval(()=>{ if(queue.length || cfg.url) sync(); }, 60000);
+
+function chipState(){
+  if(!cfg.url) return ['off','Not connected'];
+  if(syncing) return ['sync','Syncing…'];
+  if(!navigator.onLine) return ['off', queue.length? '📡 Offline · '+queue.length+' saved' : '📡 Offline'];
+  if(lastErr) return ['err', queue.length+' pending · retry'];
+  if(queue.length) return ['pend', queue.length+' pending'];
+  return ['ok','✓ Synced'];
+}
+function updateChip(){
+  const el = document.querySelector('.chip.live'); if(!el) return;
+  const [cls,txt] = chipState();
+  el.className = 'chip live '+cls; el.textContent = txt;
+  el.onclick = ()=>sync(true);
+}
+
+/* ---------- router ---------- */
+let route = {v:'blocks'};
+function nav(v, b, s){
+  route = {v, b, s};
+  history.pushState(route, '', '#'+v+(b?'/'+b:'')+(s?'/'+s:''));
+  render(); window.scrollTo(0,0);
+}
+window.onpopstate = e => { route = e.state || {v:'blocks'}; render(); };
+
+/* ---------- views ---------- */
+function header(title, backTo){
+  const [cls,txt] = chipState();
+  return `<div class="hdr">
+    ${backTo?`<button class="back" onclick="${backTo}">‹ Back</button>`:''}
+    <h1>${esc(title)}</h1>
+    <span class="chip live ${cls}" onclick="sync(true)">${esc(txt)}</span>
+  </div>`;
+}
+function vSignin(){
+  $('nav').style.display = 'none';
+  return `<div class="hdr"><h1>BHA Fix Tracker</h1></div>
+  <div class="wrap">
+    <div class="card"><b style="font-size:17px">Who are you?</b>
+    <div class="note" style="margin:6px 0 14px">Pick your name. Every change you make gets recorded under it. One time only on this phone.</div>
+    ${ROSTER.map(n=>`<button class="namebtn" onclick="pickEditor('${esc(n)}')">${esc(n)}</button>`).join('')}
+    </div></div>`;
+}
+function pickEditor(n){ editor = n; LS.set('bha_editor', n); route={v:'blocks'}; render(); }
+function vBlocks(){
+  $('nav').style.display = 'flex';
+  let tiles = '';
+  for(const b of SEED.blocks){
+    const c = blockStats(b);
+    const rB = railBase(b);
+    const fixedR = Math.max(0, rB - c.R);
+    const clear = c.R===0 && c.T===0;
+    tiles += `<button class="blk ${clear?'done':''}" onclick="nav('block','${b}')">
+      <b>${b} ${clear?'✅':''}</b>
+      <span class="mini">${c.R?`<span class="dotR">${c.R} rail left</span>`:'<span class="dotG">rail done</span>'}${c.T?`<span class="dotT">${c.T} twisted</span>`:''}</span>
+      <span class="bar"><i style="width:${pct(fixedR,rB)}%;background:${c.R?'var(--r)':'var(--y)'}"></i></span>
+    </button>`;
+  }
+  return header('ZIER · #38 BHA Fix') + `<div class="wrap">
+    <div class="grid-blocks">${tiles}</div>
+    <div class="note" style="margin-top:12px">Red bar = rail contact progress in that block. ✅ = no rail contacts or twists left.</div>
+  </div>`;
+}
+function burnRow(label, live, base, color){
+  const fixed = Math.max(0, base - live);
+  return `<div class="burn"><div class="lbl"><span>${label}</span><span>${fixed} of ${base} fixed · ${live} left</span></div>
+  <div class="bar" style="height:9px"><i style="width:${pct(fixed,base)}%;background:${color}"></i></div></div>`;
+}
+function vBlock(b){
+  $('nav').style.display = 'flex';
+  const c = blockStats(b);
+  const tB = Math.max(twistBase(b), c.T);
+  const secCard = s => {
+    const sc = secStats(b,s);
+    const clear = sc.R===0 && sc.T===0;
+    return `<button class="seccard" onclick="nav('section','${b}',${s})">
+      <b>SEC ${s}</b> ${clear?'✅':''}
+      <div class="stat3">
+        ${sc.R?`<span class="pill R">Rail ${sc.R}</span>`:''}
+        ${sc.T?`<span class="pill T">Twist ${sc.T}</span>`:''}
+        ${sc.O?`<span class="pill O">Off ${sc.O}</span>`:''}
+        ${clear?'<span class="pill Y">Rail clear</span>':''}
+      </div></button>`;
+  };
+  return header('Block '+b, "nav('blocks')") + `<div class="wrap">
+    <div class="card">
+      ${burnRow('Rail contacts', c.R, railBase(b), 'var(--r)')}
+      ${tB>0 ? burnRow('Twisted piles', c.T, tB, 'var(--t)') : ''}
+      <div class="burn"><div class="lbl"><span>Off center (status only)</span><span>${c.O} piles · ${offPct(c)}% of block</span></div>
+      <div class="bar" style="height:9px"><i style="width:${Math.min(100,offPct(c))}%;background:var(--o)"></i></div></div>
+      <div class="stat3" style="margin-top:12px">
+        <span class="pill Y">Good ${c.Y}</span>
+        ${c['.']?`<span class="pill" style="background:#f1f5f9;color:#64748b">No data ${c['.']}</span>`:''}
+      </div>
+    </div>
+    <h2 class="sec">Pick a section — same order as the map</h2>
+    <div class="secrow">${secCard(1)}${secCard(2)}<div class="roadv"><span>ROAD / INVERTER</span></div>${secCard(3)}${secCard(4)}</div>
+  </div>`;
+}
+function vSection(b,s){
+  $('nav').style.display = 'flex';
+  let rows = `<div class="maprow"><div></div>${LETTERS.map(l=>`<div class="cl">${l}</div>`).join('')}</div>`;
+  for(let r=ROWS; r>=1; r--){
+    let cells = '';
+    for(const l of LETTERS){
+      const st = getS(b,s,l,r);
+      const pend = queue.some(q=>q.k===key(b,s,l,r));
+      const cls = st==='.' ? '_' : st;
+      cells += `<button class="cell ${cls} ${pend?'pend':''}" onclick="openSheet('${b}',${s},'${l}',${r})" aria-label="${l}${r}"></button>`;
+    }
+    rows += `<div class="maprow"><div class="rl">${r}</div>${cells}</div>`;
+  }
+  const sc = secStats(b,s);
+  return header(b+' · SEC '+s, `nav('block','${b}')`) + `<div class="wrap">
+    <div class="legend">
+      <span><i style="background:var(--y)"></i>Good</span>
+      <span><i style="background:var(--o)"></i>Off center</span>
+      <span><i style="background:var(--r)"></i>Rail</span>
+      <span><i style="background:var(--t)"></i>Twisted</span>
+      <span style="margin-left:auto">${sc.R} rail${sc.T?' · '+sc.T+' twist':''}</span>
+    </div>
+    <div class="map">${rows}</div>
+    <div class="note" style="margin-top:10px">Row 25 at top, Row 1 at bottom — same as the map. Tap a pile to update it.</div>
+  </div>`;
+}
+function logRows(){
+  let out = '';
+  for(const q of queue){
+    const [b,s,l,r] = q.k.split('|');
+    out += `<div class="row"><span class="who">${esc(q.ed||'?')}</span> set <b>${b} S${s} ${l}${r}</b> ${STATUS_TEXT[q.prev]||'—'} → <b>${STATUS_TEXT[q.s]}</b><span class="pendbadge">PENDING</span><div class="meta">${fmtT(q.ts)} · this phone, not synced yet</div></div>`;
+  }
+  if(srvLog.length){
+    for(const e of srvLog.slice(0,100)){
+      const reg = e.old==='Yes' && e.nw && e.nw!=='Yes';
+      out += `<div class="row"><span class="who">${esc(e.ed||'?')}</span> set <b>${esc(e.b)} S${esc(e.sec)} ${esc(e.l)}${esc(e.row)}</b> ${esc(e.old||'—')} → <b>${esc(e.nw||'—')}</b>${reg?'<span class="regbadge">REGRESSION</span>':''}<div class="meta">${esc(e.when||'')}</div></div>`;
+    }
+  } else {
+    for(const e of logArr.slice(0,30)){
+      const [b,s,l,r] = e.k.split('|');
+      out += `<div class="row"><span class="who">${esc(e.ed||'?')}</span> set <b>${b} S${s} ${l}${r}</b> ${STATUS_TEXT[e.prev]||'—'} → <b>${STATUS_TEXT[e.s]}</b>${e.reg?'<span class="regbadge">REGRESSION</span>':''}${e.undo?' <span style="color:var(--mut)">(undo)</span>':''}<div class="meta">${fmtT(e.ts)}</div></div>`;
+    }
+  }
+  return out || '<div class="note">No edits yet.</div>';
+}
+function vDash(){
+  $('nav').style.display = 'flex';
+  const c = siteStats();
+  const rB = Object.values(SEED.railBase).reduce((a,v)=>a+v,0);
+  const tB = Math.max(Object.values(SEED.twistBase).reduce((a,v)=>a+v,0), c.T);
+  const fixedR = Math.max(0, rB - c.R), fixedT = Math.max(0, tB - c.T);
+  let tbl = '';
+  const sorted = cfg.dashSort==='worst'
+    ? [...SEED.blocks].sort((x,y)=>{const cx=blockStats(x),cy=blockStats(y);return (cy.R*10+cy.T)-(cx.R*10+cx.T);})
+    : SEED.blocks;
+  for(const b of sorted){
+    const bc = blockStats(b);
+    tbl += `<tr onclick="nav('block','${b}')"><td><b>${b}</b></td>
+      <td class="${bc.R?'':'r0'}">${bc.R===0?'✅':bc.R}</td>
+      <td style="min-width:70px"><div class="bar"><i style="width:${pct(Math.max(0,railBase(b)-bc.R),railBase(b))}%;background:${bc.R?'var(--r)':'var(--y)'}"></i></div></td>
+      <td class="${bc.T?'':'r0'}">${bc.T}</td>
+      <td class="r0" style="text-align:right">${offPct(bc)}%</td></tr>`;
+  }
+  return header('Site Dashboard') + `<div class="wrap">
+    <div class="kpis">
+      <div class="kpi"><div class="t">Rail contacts</div><div class="bigpct" style="color:var(--r)">${pct(fixedR,rB)}%</div><div class="s">${fixedR} of ${rB} fixed · <b>${c.R} left</b></div></div>
+      <div class="kpi"><div class="t">Twisted piles</div><div class="bigpct" style="color:var(--t)">${c.T}</div><div class="s">left to fix · ${fixedT} of ${tB} fixed</div></div>
+      <div class="kpi"><div class="t">Off center (status)</div><div class="bigpct" style="color:#b45309">${offPct(c)}%</div><div class="s">of all piles · ${c.O.toLocaleString()} marked</div></div>
+      <div class="kpi"><div class="t">Good piles</div><div class="bigpct" style="color:var(--y)">${c.Y.toLocaleString()}</div><div class="s">of ${(c.Y+c.O+c.R+c.T).toLocaleString()} surveyed</div></div>
+    </div>
+    <h2 class="sec">Blocks</h2>
+    <div class="tglrow">
+      <button class="tgl ${cfg.dashSort!=='worst'?'on':''}" onclick="setDashSort('order')">1 – 43</button>
+      <button class="tgl ${cfg.dashSort==='worst'?'on':''}" onclick="setDashSort('worst')">Most rail left</button>
+    </div>
+    <div class="card" style="padding:6px 10px">
+    <table class="tb"><tr><th>Block</th><th>Rail left</th><th>Rail progress</th><th>Twist</th><th style="text-align:right">Off %</th></tr>${tbl}</table></div>
+    <h2 class="sec">All edits</h2>
+    <div class="card log">${logRows()}</div>
+    ${cfg.url?'':'<div class="note">Connect the server (Menu) to see edits from the whole crew. Right now this shows this phone only.</div>'}
+  </div>`;
+}
+function setDashSort(m){ cfg.dashSort = m; persist(); render(); }
+function vMenu(){
+  $('nav').style.display = 'flex';
+  return header('Menu') + `<div class="wrap">
+    <div class="card"><b>Signed in as</b>
+      <div style="font-size:20px;font-weight:800;margin:4px 0 10px">${esc(editor||'—')}</div>
+      <button class="btn gray" onclick="editor=null;LS.set('bha_editor',null);render()">Switch person</button></div>
+    <div class="card"><b>Server connection</b>
+      <div class="note" style="margin:4px 0 8px">Paste the Apps Script web app URL Scott gives you. Until then, everything you do is saved on this phone.</div>
+      <input class="field" id="urlIn" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url||'')}">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn" onclick="cfg.url=$('urlIn').value.trim();persist();sync(true)">Save & test</button>
+        <button class="btn gray" onclick="sync(true)">Sync now</button>
+      </div>
+      <div class="note" style="margin-top:8px">Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'never'} · ${queue.length} pending · device ${esc(device)}</div></div>
+    <div class="card"><b>Backup pending edits</b>
+      <div class="note" style="margin:4px 0 8px">If a phone has to be replaced before it syncs, copy this and send it to Scott.</div>
+      <button class="btn gray" onclick="navigator.clipboard.writeText(JSON.stringify(queue)).then(()=>toast('Copied '+queue.length+' edits'))">Copy ${queue.length} pending edits</button></div>
+    <div class="card note">BHA Fix Tracker v1.3 · data snapshot ${fmtT(SEED.t)} · ${SEED.blocks.length} blocks · works fully offline, syncs when it has signal.</div>
+  </div>`;
+}
+
+/* ---------- bottom sheet ---------- */
+let sheetCtx = null;
+function openSheet(b,s,l,r){
+  if(!editor){ toast('Pick your name first (Menu)'); nav('menu'); return; }
+  sheetCtx = {b,s,l,r};
+  const cur = getS(b,s,l,r);
+  const m = getMeta(b,s,l,r);
+  const btn = code => `<button class="stbtn ${cur===code?'cur':''}" onclick="applySheet('${code}')"><span class="sw" style="background:${ST[code].color}"></span>${ST[code].label}</button>`;
+  $('sheet').innerHTML = `<h3>${b} · SEC ${s} · Pile ${l}-${r}</h3>
+    <div class="sub">${cur==='.'?'No data yet':'Now: '+STATUS_TEXT[cur]}${m?` · by ${esc(m.e||'?')} ${fmtT(m.t)}`:''}</div>
+    ${btn('Y')}${btn('R')}${btn('O')}${btn('T')}
+    <button class="cancel" onclick="closeSheet()">Cancel</button>`;
+  $('sheet').classList.add('open'); $('sheetbg').classList.add('open');
+}
+function applySheet(code){ const c = sheetCtx; closeSheet(); if(c) setStatus(c.b,c.s,c.l,c.r,code); }
+function closeSheet(){ $('sheet').classList.remove('open'); $('sheetbg').classList.remove('open'); sheetCtx=null; }
+$('sheetbg').onclick = closeSheet;
+
+/* ---------- render ---------- */
+function render(){
+  let html;
+  if(!editor) html = vSignin();
+  else if(route.v==='block') html = vBlock(route.b);
+  else if(route.v==='section') html = vSection(route.b, route.s);
+  else if(route.v==='dash') html = vDash();
+  else if(route.v==='menu') html = vMenu();
+  else html = vBlocks();
+  $('app').innerHTML = html;
+  const on = {blocks:'nav-blocks', dash:'nav-dash', menu:'nav-menu', block:'nav-blocks', section:'nav-blocks'}[route.v]||'nav-blocks';
+  for(const id of ['nav-blocks','nav-dash','nav-menu']) $(id).classList.toggle('on', id===on);
+}
+$('nav-blocks').onclick = ()=>nav('blocks');
+$('nav-dash').onclick   = ()=>nav('dash');
+$('nav-menu').onclick   = ()=>nav('menu');
+
+render();
+if(cfg.url) sync();
+
+/* ---------- service worker ---------- */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
