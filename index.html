@@ -147,6 +147,9 @@ let cfg    = LS.get('bha_cfg', {url: SERVER_URL, lastSync: SEED.t});
 if(!cfg.url) cfg.url = SERVER_URL;
 let device = LS.get('bha_device', null);
 if(!device){ device = 'dev-' + Math.random().toString(36).slice(2,10); LS.set('bha_device', device); }
+// One-time on update to v1.6: rewind the watermark to the seed so this phone re-pulls
+// every change since go-live and backfills anything the old protocol missed.
+if(!LS.get('bha_rebase16', false)){ cfg.lastSync = SEED.t; LS.set('bha_rebase16', true); }
 const persist = () => { LS.set('bha_over',over); LS.set('bha_q',queue); LS.set('bha_log',logArr.slice(0,250)); LS.set('bha_srvlog',srvLog.slice(0,150)); LS.set('bha_cfg',cfg); };
 
 /* ---------- data access ---------- */
