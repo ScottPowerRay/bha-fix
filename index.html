@@ -66,6 +66,16 @@ h2.sec{font-size:13px;font-weight:800;color:var(--mut);text-transform:uppercase;
 .cell.pend:after{content:"";position:absolute;inset:2px;border:2px dashed rgba(255,255,255,.9);border-radius:4px}
 .legend{display:flex;gap:10px;flex-wrap:wrap;padding:10px 2px;font-size:12px;font-weight:600;color:var(--mut)}
 .legend i{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:4px}
+.calhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.caldow{margin-bottom:2px}
+.caldow span{font-size:10px;font-weight:800;color:var(--mut);text-align:center;padding:2px 0}
+.calday{position:relative;aspect-ratio:1/.9;border:1px solid var(--line);border-radius:9px;background:var(--card);font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);padding:0}
+.calday.today{border-color:#93c5fd}
+.calday.sel{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
+.calday i{position:absolute;left:50%;transform:translateX(-50%);bottom:3px;width:5px;height:5px;border-radius:99px;background:var(--y)}
+.calline{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:14px;font-weight:600}
+.calline i{width:14px;height:14px;border-radius:5px;flex:none}
 .sheetbg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
 .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(18px + var(--safe-b));z-index:41;transform:translateY(105%);transition:transform .18s ease-out;max-width:760px;margin:0 auto}
 .sheet.open{transform:none}
@@ -115,12 +125,13 @@ table.tb td{padding:8px 6px;border-bottom:1px solid #f1f5f9;font-weight:600}
 <nav class="nav" id="nav" style="display:none">
   <button id="nav-blocks"><span class="ico">🗺️</span>Blocks</button>
   <button id="nav-dash"><span class="ico">📊</span>Dashboard</button>
+  <button id="nav-cal"><span class="ico">📅</span>Days</button>
   <button id="nav-menu"><span class="ico">☰</span>Menu</button>
 </nav>
 <script src="data.js"></script>
 <script>
 'use strict';
-/* ================= BHA Fix Tracker v1.9 ================= */
+/* ================= BHA Fix Tracker v2.0 ================= */
 const SEED = window.BHA_SEED;
 const LETTERS = 'ABCDEFGHIJK'.split('');
 const ROWS = 25;
@@ -142,6 +153,7 @@ let over   = LS.get('bha_over', {});
 let queue  = LS.get('bha_q', []);
 let logArr = LS.get('bha_log', []);
 let srvLog = LS.get('bha_srvlog', []);
+let calDays = LS.get('bha_cal', {});
 let editor = LS.get('bha_editor', null);
 const SERVER_URL = 'https://script.google.com/macros/s/AKfycbyHD-e_B4UeNqS00uJDNaBcrSX-gQp08t_i1__l39II5JSarHwszqEF4SBQarQ5eeXQ/exec';
 let cfg    = LS.get('bha_cfg', {url: SERVER_URL, lastSync: SEED.t});
@@ -240,6 +252,7 @@ async function sync(manual){
       over[k] = j.changed[k];
     }
     if(j.log && j.log.length) srvLog = j.log;
+    if(j.cal){ calDays = j.cal; LS.set('bha_cal', j.cal); }
     if(j.time) cfg.lastSync = j.time;
     failN = 0;
     persist(); render();
@@ -435,13 +448,60 @@ function vDash(){
   </div>`;
 }
 function setDashSort(m){ cfg.dashSort = m; persist(); render(); }
+/* ---------- calendar ---------- */
+let calM = null, calSel = null;
+const dstr = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+function vCal(){
+  $('nav').style.display = 'flex';
+  const today = new Date();
+  if(!calM) calM = new Date(today.getFullYear(), today.getMonth(), 1);
+  if(!calSel) calSel = dstr(today);
+  const y = calM.getFullYear(), mo = calM.getMonth();
+  const monthName = calM.toLocaleDateString([], {month:'long', year:'numeric'});
+  const first = new Date(y, mo, 1).getDay();
+  const nDays = new Date(y, mo+1, 0).getDate();
+  let cells = '';
+  for(let i=0;i<first;i++) cells += '<span></span>';
+  for(let d=1; d<=nDays; d++){
+    const ds = dstr(new Date(y, mo, d));
+    cells += `<button class="calday ${ds===calSel?'sel':''} ${ds===dstr(today)?'today':''}" onclick="calPick('${ds}')">${d}${calDays[ds]?'<i></i>':''}</button>`;
+  }
+  const c = calDays[calSel] || null;
+  const tot = c ? (c.Y||0)+(c.O||0)+(c.R||0)+(c.T||0) : 0;
+  const selTitle = new Date(calSel+'T12:00:00').toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+  const line = (color, label, n) => `<div class="calline"><i style="background:${color}"></i>${label}<b style="margin-left:auto">${n}</b></div>`;
+  return header('Daily Progress') + `<div class="wrap">
+    <div class="card">
+      <div class="calhead">
+        <button class="back" onclick="calNav(-1)">‹</button>
+        <b style="flex:1;text-align:center">${monthName}</b>
+        <button class="back" onclick="calNav(1)">›</button>
+      </div>
+      <div class="calgrid caldow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+      <div class="calgrid">${cells}</div>
+    </div>
+    <div class="card">
+      <b style="font-size:16px">${selTitle}</b>
+      ${c ? `<div style="margin-top:8px">
+        ${line('var(--y)','Fixed — set to Good', c.Y||0)}
+        ${line('var(--r)','Rail contact found', c.R||0)}
+        ${line('var(--o)','Off center marked', c.O||0)}
+        ${line('var(--t)','Twisted pile found', c.T||0)}
+        <div class="calline" style="border-top:1px solid var(--line);font-weight:800;margin-top:2px"><span>Total changes</span><b style="margin-left:auto">${tot}</b></div>
+      </div>` : '<div class="note" style="margin-top:8px">No work recorded this day.</div>'}
+    </div>
+    <div class="note" style="padding:0 4px">Counts come straight from the sheet's audit log and update automatically with every sync. Days with a dot have activity.</div>
+  </div>`;
+}
+function calNav(d){ calM = new Date(calM.getFullYear(), calM.getMonth()+d, 1); render(); }
+function calPick(ds){ calSel = ds; render(); }
 function vMenu(){
   $('nav').style.display = 'flex';
   return header('Menu') + `<div class="wrap">
     <div class="card"><b>Signed in as</b>
       <div style="font-size:20px;font-weight:800;margin:4px 0 10px">${esc(editor||'—')}</div>
       <button class="btn gray" onclick="editor=null;LS.set('bha_editor',null);render()">Switch person</button></div>
-    <div class="card note">BHA Fix Tracker v1.9 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
+    <div class="card note">BHA Fix Tracker v2.0 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
   </div>`;
 }
 
@@ -470,14 +530,16 @@ function render(){
   else if(route.v==='block') html = vBlock(route.b);
   else if(route.v==='section') html = vSection(route.b, route.s);
   else if(route.v==='dash') html = vDash();
+  else if(route.v==='cal') html = vCal();
   else if(route.v==='menu') html = vMenu();
   else html = vBlocks();
   $('app').innerHTML = html;
-  const on = {blocks:'nav-blocks', dash:'nav-dash', menu:'nav-menu', block:'nav-blocks', section:'nav-blocks'}[route.v]||'nav-blocks';
-  for(const id of ['nav-blocks','nav-dash','nav-menu']) $(id).classList.toggle('on', id===on);
+  const on = {blocks:'nav-blocks', dash:'nav-dash', cal:'nav-cal', menu:'nav-menu', block:'nav-blocks', section:'nav-blocks'}[route.v]||'nav-blocks';
+  for(const id of ['nav-blocks','nav-dash','nav-cal','nav-menu']) $(id).classList.toggle('on', id===on);
 }
 $('nav-blocks').onclick = ()=>nav('blocks');
 $('nav-dash').onclick   = ()=>nav('dash');
+$('nav-cal').onclick    = ()=>nav('cal');
 $('nav-menu').onclick   = ()=>nav('menu');
 
 render();
