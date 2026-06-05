@@ -120,7 +120,7 @@ table.tb td{padding:8px 6px;border-bottom:1px solid #f1f5f9;font-weight:600}
 <script src="data.js"></script>
 <script>
 'use strict';
-/* ================= BHA Fix Tracker v1.7 ================= */
+/* ================= BHA Fix Tracker v1.9 ================= */
 const SEED = window.BHA_SEED;
 const LETTERS = 'ABCDEFGHIJK'.split('');
 const ROWS = 25;
@@ -441,7 +441,7 @@ function vMenu(){
     <div class="card"><b>Signed in as</b>
       <div style="font-size:20px;font-weight:800;margin:4px 0 10px">${esc(editor||'—')}</div>
       <button class="btn gray" onclick="editor=null;LS.set('bha_editor',null);render()">Switch person</button></div>
-    <div class="card note">BHA Fix Tracker v1.7 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
+    <div class="card note">BHA Fix Tracker v1.9 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
   </div>`;
 }
 
@@ -483,9 +483,25 @@ $('nav-menu').onclick   = ()=>nav('menu');
 render();
 if(cfg.url) sync();
 
-/* ---------- service worker ---------- */
+/* ---------- service worker: self-updating ---------- */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // keep checking for new versions while the app stays open
+    setInterval(() => reg.update().catch(()=>{}), 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) reg.update().catch(()=>{}); });
+  }).catch(()=>{});
+  // when a new version takes over, refresh once — automatically, politely
+  let refreshedOnce = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshedOnce) return;
+    refreshedOnce = true;
+    const go = () => {
+      if (sheetCtx){ setTimeout(go, 1500); return; }   // never yank the screen mid-tap
+      toast('Updating to the latest version…');
+      setTimeout(() => location.reload(), 900);
+    };
+    go();
+  });
 }
 </script>
 </body>
