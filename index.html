@@ -131,7 +131,7 @@ table.tb td{padding:8px 6px;border-bottom:1px solid #f1f5f9;font-weight:600}
 <script src="data.js"></script>
 <script>
 'use strict';
-/* ================= BHA Fix Tracker v2.0 ================= */
+/* ================= BHA Fix Tracker v2.1 ================= */
 const SEED = window.BHA_SEED;
 const LETTERS = 'ABCDEFGHIJK'.split('');
 const ROWS = 25;
@@ -154,6 +154,7 @@ let queue  = LS.get('bha_q', []);
 let logArr = LS.get('bha_log', []);
 let srvLog = LS.get('bha_srvlog', []);
 let calDays = LS.get('bha_cal', {});
+let twistData = LS.get('bha_twist', {fixed:0, byBlock:{}});
 let editor = LS.get('bha_editor', null);
 const SERVER_URL = 'https://script.google.com/macros/s/AKfycbyHD-e_B4UeNqS00uJDNaBcrSX-gQp08t_i1__l39II5JSarHwszqEF4SBQarQ5eeXQ/exec';
 let cfg    = LS.get('bha_cfg', {url: SERVER_URL, lastSync: SEED.t});
@@ -253,6 +254,7 @@ async function sync(manual){
     }
     if(j.log && j.log.length) srvLog = j.log;
     if(j.cal){ calDays = j.cal; LS.set('bha_cal', j.cal); }
+    if(j.twist){ twistData = j.twist; LS.set('bha_twist', j.twist); }
     if(j.time) cfg.lastSync = j.time;
     failN = 0;
     persist(); render();
@@ -338,7 +340,8 @@ function burnRow(label, live, base, color){
 function vBlock(b){
   $('nav').style.display = 'flex';
   const c = blockStats(b);
-  const tB = Math.max(twistBase(b), c.T);
+  const twTgtB = twistBase(b);
+  const twFixB = (twistData.byBlock&&twistData.byBlock[b])||0;
   const secCard = s => {
     const sc = secStats(b,s);
     const clear = sc.R===0 && sc.T===0;
@@ -354,7 +357,8 @@ function vBlock(b){
   return header('Block '+b, "nav('blocks')") + `<div class="wrap">
     <div class="card">
       ${burnRow('Rail contacts', c.R, railBase(b), 'var(--r)')}
-      ${tB>0 ? burnRow('Twisted piles', c.T, tB, 'var(--t)') : ''}
+      ${(twTgtB>0||c.T>0||twFixB>0) ? `<div class="burn"><div class="lbl"><span>Twisted piles</span><span>${twFixB} of ${twTgtB} fixed · ${c.T} open</span></div>
+      <div class="bar" style="height:9px"><i style="width:${pct(twFixB,Math.max(twTgtB,twFixB,1))}%;background:var(--t)"></i></div></div>` : ''}
       <div class="burn"><div class="lbl"><span>Off center (status only)</span><span>${c.O} piles · ${offPct(c)}% of block</span></div>
       <div class="bar" style="height:9px"><i style="width:${Math.min(100,offPct(c))}%;background:var(--o)"></i></div></div>
       <div class="stat3" style="margin-top:12px">
@@ -414,8 +418,9 @@ function vDash(){
   $('nav').style.display = 'flex';
   const c = siteStats();
   const rB = Object.values(SEED.railBase).reduce((a,v)=>a+v,0);
-  const tB = Math.max(Object.values(SEED.twistBase).reduce((a,v)=>a+v,0), c.T);
-  const fixedR = Math.max(0, rB - c.R), fixedT = Math.max(0, tB - c.T);
+  const twFound = Object.values(SEED.twistBase).reduce((a,v)=>a+v,0);
+  const twF = (twistData&&twistData.fixed)||0;
+  const fixedR = Math.max(0, rB - c.R);
   let tbl = '';
   const sorted = cfg.dashSort==='worst'
     ? [...SEED.blocks].sort((x,y)=>{const cx=blockStats(x),cy=blockStats(y);return (cy.R*10+cy.T)-(cx.R*10+cx.T);})
@@ -431,7 +436,7 @@ function vDash(){
   return header('Site Dashboard') + `<div class="wrap">
     <div class="kpis">
       <div class="kpi"><div class="t">Rail contacts</div><div class="bigpct" style="color:var(--r)">${pct(fixedR,rB)}%</div><div class="s">${fixedR} of ${rB} fixed · <b>${c.R} left</b></div></div>
-      <div class="kpi"><div class="t">Twisted piles</div><div class="bigpct" style="color:var(--t)">${c.T}</div><div class="s">left to fix · ${fixedT} of ${tB} fixed</div></div>
+      <div class="kpi"><div class="t">Twisted piles</div><div class="bigpct" style="color:var(--t)">${twF}</div><div class="s">of ${twFound} found fixed · ${c.T} open now</div></div>
       <div class="kpi"><div class="t">Off center (status)</div><div class="bigpct" style="color:#b45309">${offPct(c)}%</div><div class="s">of all piles · ${c.O.toLocaleString()} marked</div></div>
       <div class="kpi"><div class="t">Good piles</div><div class="bigpct" style="color:var(--y)">${c.Y.toLocaleString()}</div><div class="s">of ${(c.Y+c.O+c.R+c.T).toLocaleString()} surveyed</div></div>
     </div>
@@ -501,7 +506,7 @@ function vMenu(){
     <div class="card"><b>Signed in as</b>
       <div style="font-size:20px;font-weight:800;margin:4px 0 10px">${esc(editor||'—')}</div>
       <button class="btn gray" onclick="editor=null;LS.set('bha_editor',null);render()">Switch person</button></div>
-    <div class="card note">BHA Fix Tracker v2.0 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
+    <div class="card note">BHA Fix Tracker v2.1 · ${SEED.blocks.length} blocks · works fully offline — edits save on this phone and sync to the sheet automatically when there's signal. Last sync: ${cfg.lastSync?fmtT(cfg.lastSync):'—'} · ${queue.length} waiting.</div>
   </div>`;
 }
 
